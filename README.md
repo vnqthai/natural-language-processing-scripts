@@ -236,10 +236,91 @@ wayback machine
 
 Follows instruction at [Text Classification is Your New Secret Weapon](https://medium.com/@ageitgey/text-classification-is-your-new-secret-weapon-7ca4fad15788), contains code for classifying texts into: like/dislike, positive/negative, rate 1 to 5 stars... about a subject.
 
-### Install fastText and 
+### Install fastText
 
 Follow [these instructions](https://fasttext.cc/docs/en/support.html).
+
+Save the path to `fasttext` executable file in the `fastText` directory for future use.
 
 ### Download Yelp data
 
 Download [Yelp research dataset of 4.7 million user reviews](https://www.yelp.com/dataset/download), it is a 4.5GB compressed, 9.8GB uncompressed JSON file. Note that you cannot use Yelp data for commercial purposes.
+
+### Format and pre-process training data (optional)
+
+```shell
+$ python3 preprocess_data.py /path/to/yelp_academic_dataset_review.json /path/to/fasttext_dataset.txt
+```
+
+This command creates `fasttext_dataset.txt` , 4.9GB.
+
+### Split data into training set and test set
+
+```shell
+$ python3 split_datasets.py /path/to/yelp_academic_dataset_review.json /path/to/fasttext_dataset_training.txt /path/to/fasttext_dataset_test.txt
+```
+
+This command creates 2 files: `fasttext_dataset_training.txt` (4.6GB) and `fasttext_dataset_test.txt` (0.5GB).
+
+### Train the model
+
+```shell
+$ /path/to/fasttext supervised -input /path/to/fasttext_dataset_training.txt -output /path/to/reviews_model
+Read 938M words
+Number of words:  1461598
+Number of labels: 5
+Progress: 100.0% words/sec/thread: 1968272 lr:  0.000000 avg.loss:  0.745535 ETA:   0h 0m 0s
+```
+
+This training creates 2 files: `reviews_model.bin` (0.6GB), and `reviews_model.vec` (1.5GB). It takes around **3 minutes** on my laptop.
+
+You can add `fasttext` to `$PATH` for quick access.
+
+### Test the model
+
+```shell
+$ /path/to/fasttext test /path/to/reviews_model.bin /path/to/fasttext_dataset_test.txt
+N       802811
+P@1     0.706
+R@1     0.706
+```
+
+This means there are 802,811 examples in the test dataset, and our model guesses correctly **70,6%** of them.
+
+To enter our text and let the model guess interactively:
+
+```shell
+$ /path/to/fasttext predict /path/to/reviews_model.bin -
+Some text
+__label__4.0
+Another text
+__label__3.0
+```
+
+You should try it yourself.
+
+### Track group of words
+
+Previously, we only tracked single words, and did not care about their order. Now we care about word order. This will help your model increase accuracy, but training will take more time, and model file will be bigger.
+
+```shell
+$ /path/to/fasttext supervised -input /path/to/fasttext_dataset_training.txt -output /path/to/reviews_model_ngrams -wordNgrams 2
+Read 938M words
+Number of words:  1461598
+Number of labels: 5
+Progress: 100.0% words/sec/thread: 1153207 lr:  0.000000 avg.loss:  0.654227 ETA:   0h 0m 0s
+```
+
+Now the training takes **7 minutes** (+4 minutes), and the `reviews_model_ngrams.bin` file is 1.4GB (+0.8GB).
+
+Run test again:
+
+```shell
+$ /path/to/fasttext test /path/to/reviews_model_ngrams.bin /path/to/fasttext_dataset_test.txt
+N       802811
+P@1     0.738
+R@1     0.738
+```
+
+Now accuracy is **73.8%** (+3.2%).
+
